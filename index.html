@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Xadrez Experimental com IA</title>
+<style>
+  body { font-family: Arial, sans-serif; background:#111; color:#fff; display:flex; justify-content:center; }
+  .game { max-width: 420px; width:100%; }
+  h1 { text-align:center; font-size:1.2rem; }
+  table { border-collapse: collapse; width:100%; }
+  td {
+    width:12.5%; aspect-ratio:1/1; text-align:center; font-size:1.8rem;
+    vertical-align:middle; cursor:pointer;
+  }
+  .w { background:#f0d9b5; color:#000; }
+  .b { background:#b58863; color:#000; }
+  .selected { outline:3px solid red; }
+  .info { margin-top:8px; font-size:0.9rem; text-align:center; }
+</style>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#111" />
+</head>
+<body>
+<div class="game">
+<h1>Xadrez Experimental (com IA)</h1>
+<table id="board"></table>
+<div class="info" id="info">Sua vez (Brancas)</div>
+</div>
+
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js');
+}
+
+// Peças: maiúsculas = jogador, minúsculas = IA
+// S = Peça Suprema (rainha + cavalo, alcance máx 2 casas)
+let board = [
+  ['r','n','b','q','k','b','n','r'],
+  ['p','p','p','p','p','p','p','p'],
+  ['','','','','','','',''],
+  ['','','','','','','',''],
+  ['','','','','','','',''],
+  ['','','','','','','',''],
+  ['P','P','P','P','P','P','P','P'],
+  ['R','N','B','Q','K','B','N','R'],
+];
+
+// peça suprema no lugar da rainha branca
+board[7][3] = 'S';
+
+const symbols = {
+  r:'♜', n:'♞', b:'♝', q:'♛', k:'♚', p:'♟',
+  R:'♖', N:'♘', B:'♗', Q:'♕', K:'♔', P:'♙',
+  S:'★'
+};
+
+let selected = null;
+let turn = 'player';
+
+function draw() {
+  const t = document.getElementById('board');
+  t.innerHTML='';
+  for(let i=0;i<8;i++){
+    const r = t.insertRow();
+    for(let j=0;j<8;j++){
+      const c = r.insertCell();
+      c.className = (i+j)%2?'b':'w';
+      if(selected && selected[0]==i && selected[1]==j) c.classList.add('selected');
+      c.textContent = symbols[board[i][j]]||'';
+      c.onclick = ()=>click(i,j);
+    }
+  }
+}
+
+function click(i,j){
+  if(turn!=='player') return;
+  const p = board[i][j];
+  if(selected){
+    move(selected[0],selected[1],i,j);
+    selected=null;
+  } else if(p && p===p.toUpperCase()){
+    selected=[i,j];
+  }
+  draw();
+}
+
+function move(x,y,i,j){
+  board[i][j]=board[x][y];
+  board[x][y]='';
+  turn='ai';
+  document.getElementById('info').textContent='Vez da IA';
+  setTimeout(aiMove,400);
+}
+
+function aiMove(){
+  // IA simples: primeiro movimento válido
+  for(let i=0;i<8;i++){
+    for(let j=0;j<8;j++){
+      const p=board[i][j];
+      if(p && p===p.toLowerCase()){
+        const di=i+1;
+        if(di<8 && board[di][j]===''){
+          board[di][j]=p;
+          board[i][j]='';
+          turn='player';
+          document.getElementById('info').textContent='Sua vez (Brancas)';
+          draw();
+          return;
+        }
+      }
+    }
+  }
+  turn='player';
+}
+
+draw();
+</script>
+</body>
+</html>

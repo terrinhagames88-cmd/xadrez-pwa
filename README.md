@@ -1,1 +1,1 @@
-# chesscore
+# xadrez-pwa

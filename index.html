@@ -1,120 +1,247 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Xadrez Experimental com IA</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chess Core - Xadrez</title>
+
+<!-- Fontes -->
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Poppins:wght@500&display=swap" rel="stylesheet">
+
 <style>
-  body { font-family: Arial, sans-serif; background:#111; color:#fff; display:flex; justify-content:center; }
-  .game { max-width: 420px; width:100%; }
-  h1 { text-align:center; font-size:1.2rem; }
-  table { border-collapse: collapse; width:100%; }
-  td {
-    width:12.5%; aspect-ratio:1/1; text-align:center; font-size:1.8rem;
-    vertical-align:middle; cursor:pointer;
-  }
-  .w { background:#f0d9b5; color:#000; }
-  .b { background:#b58863; color:#000; }
-  .selected { outline:3px solid red; }
-  .info { margin-top:8px; font-size:0.9rem; text-align:center; }
+body{
+  margin:0;
+  background:#111;
+  color:#fff;
+  font-family:'Poppins',sans-serif;
+  display:flex;
+  justify-content:center;
+}
+.hidden{display:none;}
+
+.screen{
+  max-width:420px;
+  width:100%;
+  padding:16px;
+  text-align:center;
+}
+
+h1{
+  font-family:'Cinzel',serif;
+  font-size:2.2rem;
+  margin-bottom:20px;
+}
+
+button{
+  width:100%;
+  padding:12px;
+  margin:6px 0;
+  font-size:1rem;
+  font-weight:600;
+  background:#222;
+  color:#fff;
+  border:none;
+  border-radius:8px;
+}
+
+button:hover{background:#333;}
+
+table{
+  border-collapse:collapse;
+  width:100%;
+}
+td{
+  width:12.5%;
+  height:12.5vw;
+  max-width:52px;
+  max-height:52px;
+  text-align:center;
+  font-size:1.8rem;
+}
+.w{background:#f0d9b5;color:#000;}
+.b{background:#b58863;color:#000;}
+.selected{outline:3px solid red;}
 </style>
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#111" />
 </head>
+
 <body>
-<div class="game">
-<h1>Xadrez Experimental (com IA)</h1>
-<table id="board"></table>
-<div class="info" id="info">Sua vez (Brancas)</div>
+
+<!-- TELA INICIAL -->
+<div id="menu" class="screen">
+  <h1>Chess Core<br>Xadrez</h1>
+  <button onclick="showModes()">Iniciar</button>
+  <button onclick="showOptions()">Opções</button>
+</div>
+
+<!-- MODOS -->
+<div id="modes" class="screen hidden">
+  <h2>Modos</h2>
+  <button onclick="startClassic()">Clássico</button>
+  <button onclick="startOpenCrown()">Coroa Aberta</button>
+  <button onclick="startSupreme()">Domínio Absoluto</button>
+  <button onclick="startCrownMarch()">Marcha da Coroa</button>
+  <button onclick="startTrial()">Provação</button>
+  <button onclick="backMenu()">Voltar</button>
+</div>
+
+<!-- OPÇÕES -->
+<div id="options" class="screen hidden">
+  <h2>Opções</h2>
+  <p>Versão inicial do Chess Core</p>
+  <button onclick="backMenu()">Voltar</button>
+</div>
+
+<!-- JOGO -->
+<div id="game" class="screen hidden">
+  <table id="board"></table>
+  <button onclick="backMenu()">Sair</button>
 </div>
 
 <script>
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js');
-}
+let board=[],selected=null,turn='player';
 
-// Peças: maiúsculas = jogador, minúsculas = IA
-// S = Peça Suprema (rainha + cavalo, alcance máx 2 casas)
-let board = [
-  ['r','n','b','q','k','b','n','r'],
-  ['p','p','p','p','p','p','p','p'],
-  ['','','','','','','',''],
-  ['','','','','','','',''],
-  ['','','','','','','',''],
-  ['','','','','','','',''],
-  ['P','P','P','P','P','P','P','P'],
-  ['R','N','B','Q','K','B','N','R'],
-];
-
-// peça suprema no lugar da rainha branca
-board[7][3] = 'S';
-
-const symbols = {
-  r:'♜', n:'♞', b:'♝', q:'♛', k:'♚', p:'♟',
-  R:'♖', N:'♘', B:'♗', Q:'♕', K:'♔', P:'♙',
-  S:'★'
+const symbols={
+  r:'♜',n:'♞',b:'♝',q:'♛',k:'♚',p:'♟',
+  R:'♖',N:'♘',B:'♗',Q:'♕',K:'♔',P:'♙',
+  S:'★',s:'★',C:'♔'
 };
 
-let selected = null;
-let turn = 'player';
+// TABULEIROS
+const classicBoard=[
+ ['r','n','b','q','k','b','n','r'],
+ ['p','p','p','p','p','p','p','p'],
+ ['','','','','','','',''],
+ ['','','','','','','',''],
+ ['','','','','','','',''],
+ ['','','','','','','',''],
+ ['P','P','P','P','P','P','P','P'],
+ ['R','N','B','Q','K','B','N','R']
+];
 
-function draw() {
-  const t = document.getElementById('board');
-  t.innerHTML='';
-  for(let i=0;i<8;i++){
-    const r = t.insertRow();
-    for(let j=0;j<8;j++){
-      const c = r.insertCell();
-      c.className = (i+j)%2?'b':'w';
-      if(selected && selected[0]==i && selected[1]==j) c.classList.add('selected');
-      c.textContent = symbols[board[i][j]]||'';
-      c.onclick = ()=>click(i,j);
-    }
+const openCrownBoard=[
+ ['r','n','b','q','k','b','n','r'],
+ ['','','p','p','p','p','',''],
+ ['','','','','','','',''],
+ ['','','','','','','',''],
+ ['','','','','','','',''],
+ ['','','','','','','',''],
+ ['','','P','P','P','P','',''],
+ ['R','N','B','Q','K','B','N','R']
+];
+
+const supremeBoard=[
+ ['r','n','b','','k','b','n','r'],
+ ['s','p','p','p','p','p','p','s'],
+ ['','','','','','','',''],
+ ['','','','','','','',''],
+ ['','','','','','','',''],
+ ['','','','','','','',''],
+ ['S','P','P','P','P','P','P','S'],
+ ['R','N','B','','K','B','N','R']
+];
+
+const crownMarchBoard=JSON.parse(JSON.stringify(classicBoard));
+const trialBoard=JSON.parse(JSON.stringify(classicBoard));
+
+// TELAS
+function showModes(){menu.style.display='none';modes.style.display='block';}
+function showOptions(){menu.style.display='none';options.style.display='block';}
+function backMenu(){
+ menu.style.display='block';
+ modes.style.display='none';
+ options.style.display='none';
+ game.style.display='none';
+}
+
+// INICIAR MODOS
+function startClassic(){startGame(classicBoard);}
+function startOpenCrown(){startGame(openCrownBoard);}
+function startSupreme(){startGame(supremeBoard);}
+function startCrownMarch(){startGame(crownMarchBoard);}
+function startTrial(){
+ board=JSON.parse(JSON.stringify(trialBoard));
+ removeRandom(false);removeRandom(true);giveAIQueen();
+ start();
+}
+
+function startGame(b){board=JSON.parse(JSON.stringify(b));start();}
+function start(){
+ menu.style.display='none';modes.style.display='none';
+ game.style.display='block';turn='player';draw();
+}
+
+// TABULEIRO
+function draw(){
+ const t=document.getElementById('board');t.innerHTML='';
+ for(let i=0;i<8;i++){
+  let r=t.insertRow();
+  for(let j=0;j<8;j++){
+   let c=r.insertCell();
+   c.className=(i+j)%2?'b':'w';
+   if(selected&&selected[0]==i&&selected[1]==j)c.classList.add('selected');
+   c.textContent=symbols[board[i][j]]||'';
+   c.onclick=()=>click(i,j);
   }
+ }
 }
 
 function click(i,j){
-  if(turn!=='player') return;
-  const p = board[i][j];
-  if(selected){
-    move(selected[0],selected[1],i,j);
-    selected=null;
-  } else if(p && p===p.toUpperCase()){
-    selected=[i,j];
-  }
-  draw();
+ if(turn!=='player')return;
+ let p=board[i][j];
+ if(selected){
+  if(isLegal(selected[0],selected[1],i,j))move(selected[0],selected[1],i,j);
+  selected=null;
+ }else if(p&&p===p.toUpperCase())selected=[i,j];
+ draw();
 }
 
 function move(x,y,i,j){
-  board[i][j]=board[x][y];
-  board[x][y]='';
-  turn='ai';
-  document.getElementById('info').textContent='Vez da IA';
-  setTimeout(aiMove,400);
+ board[i][j]=board[x][y];board[x][y]='';
+ if(board[i][j]==='P'&&i===0)board[i][j]='C';
+ turn='ai';setTimeout(aiMove,300);
 }
 
+// MOVIMENTOS
+function isLegal(x,y,i,j){
+ let p=board[x][y],dx=i-x,dy=j-y;
+ if(board[i][j]&&board[i][j]===board[i][j].toUpperCase())return false;
+ switch(p){
+  case'P':return y===j&&i===x-1||Math.abs(dy)==1&&i===x-1;
+  case'R':return x==i||y==j;
+  case'B':return Math.abs(dx)==Math.abs(dy);
+  case'N':return(Math.abs(dx)==2&&Math.abs(dy)==1)||(Math.abs(dx)==1&&Math.abs(dy)==2);
+  case'K':case'C':return Math.abs(dx)<=1&&Math.abs(dy)<=1;
+  case'S':return Math.abs(dx)<=2&&Math.abs(dy)<=2||((Math.abs(dx)==2&&Math.abs(dy)==1)||(Math.abs(dx)==1&&Math.abs(dy)==2));
+ }
+ return false;
+}
+
+// IA SIMPLES
 function aiMove(){
-  // IA simples: primeiro movimento válido
-  for(let i=0;i<8;i++){
-    for(let j=0;j<8;j++){
-      const p=board[i][j];
-      if(p && p===p.toLowerCase()){
-        const di=i+1;
-        if(di<8 && board[di][j]===''){
-          board[di][j]=p;
-          board[i][j]='';
-          turn='player';
-          document.getElementById('info').textContent='Sua vez (Brancas)';
-          draw();
-          return;
-        }
-      }
-    }
+ for(let x=0;x<8;x++)for(let y=0;y<8;y++){
+  let p=board[x][y];
+  if(p&&p===p.toLowerCase()){
+   for(let i=0;i<8;i++)for(let j=0;j<8;j++){
+    if(isLegal(x,y,i,j)){board[i][j]=p;board[x][y]='';turn='player';draw();return;}
+   }
   }
-  turn='player';
+ }
+ turn='player';
 }
 
-draw();
+// PROVAÇÃO
+function removeRandom(ai){
+ let r=0;
+ while(r<4){
+  let x=Math.floor(Math.random()*8),y=Math.floor(Math.random()*8),p=board[x][y];
+  if(!p)continue;
+  if(ai&&p===p.toLowerCase()&&p!=='k'){board[x][y]='';r++;}
+  if(!ai&&p===p.toUpperCase()&&p!=='Q'&&p!=='K'){board[x][y]='';r++;}
+ }
+}
+function giveAIQueen(){
+ for(let i=0;i<8;i++)for(let j=0;j<8;j++)if(board[i][j]==='q'){board[i][j+1]='q';return;}
+}
 </script>
 </body>
 </html>
